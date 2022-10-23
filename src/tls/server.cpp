@@ -17,6 +17,12 @@ TLS::Server::Server(uint16_t port) {
 		exit(EXIT_FAILURE);
 	}
 
+	const int enable = 1;
+	if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
+		std::cerr << "Could not set SO_REUSEADDR" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+
 	if(bind(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
 		std::cerr << "Unable to bind to port " << port << std::endl;
 		exit(EXIT_FAILURE);
@@ -24,24 +30,6 @@ TLS::Server::Server(uint16_t port) {
 
 	if(listen(sock, 1) < 0) {
 		std::cerr << "Unable to listen on port " << port << std::endl;
-		exit(EXIT_FAILURE);
-	}
-}
-
-void TLS::Server::setup(const char* cert, const char* key) {
-	const SSL_METHOD* method = TLS_server_method();
-	ctx = SSL_CTX_new(method);
-	if(!ctx) {
-		std::cerr << "Unable to create SSL context" << std::endl;
-		exit(EXIT_FAILURE);
-	}
-
-	if(SSL_CTX_use_certificate_file(ctx, cert, SSL_FILETYPE_PEM) <= 0) {
-		ERR_print_errors_fp(stderr);
-		exit(EXIT_FAILURE);
-	}
-	if(SSL_CTX_use_PrivateKey_file(ctx, key, SSL_FILETYPE_PEM) <= 0) {
-		ERR_print_errors_fp(stderr);
 		exit(EXIT_FAILURE);
 	}
 }
@@ -59,8 +47,9 @@ TLS::Connection TLS::Server::acc() {
 	// Set timeout
 	setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
 
-	SSL* ssl = SSL_new(ctx);
+	SSL* ssl = SSL_new(defaultContext);
 	SSL_set_fd(ssl, client);
+	SSL_CTX_set_tlsext_servername_callback(defaultContext, sniCallback);
 	if(SSL_accept(ssl) <= 0) {
 		ERR_print_errors_fp(stderr);
 		SSL_shutdown(ssl);
@@ -78,5 +67,7 @@ TLS::Connection TLS::Server::acc() {
 
 void TLS::Server::cl() {
 	close(sock);
-	SSL_CTX_free(ctx);
+	for(auto& x : ctxs)
+		SSL_CTX_free(x.second);
+	ctxs.clear();
 }

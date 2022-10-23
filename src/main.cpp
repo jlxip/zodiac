@@ -2,35 +2,65 @@
 #include <common.hpp>
 #include <unistd.h>
 
-// This will be in config soon
+// These will be in config soon
 #define DEFAULT_PORT 1965
 #define FRONTEND_TIMEOUT 5
 #define BACKEND_TIMEOUT 5
 
 #define BUFFER_SIZE 1024
 
+Config globalConfig;
+TLS::Server globalServer;
+
 int main() {
 	std::cout << "Zodiac starting. Parsing configuration..." << std::endl;
-	auto config = parseConfig();
+	globalConfig = parseConfig();
+	globalServer = {DEFAULT_PORT};
 
-	TLS::Server server(DEFAULT_PORT);
+	std::cout << "Setting up capsules..." << std::endl;
+	for(auto const& x : globalConfig.capsules) {
+		std::cout << "-> Enabling " << x.first << std::endl;
+		auto* ctx = TLS::createContext
+			(x.second.cert.c_str(), x.second.key.c_str());
+		globalServer.ctxs[x.first] = ctx;
+		globalServer.names[x.second.name] = x.first;
+	}
+	globalServer.defaultContext = globalServer.ctxs[globalConfig.def];
+
+	globalServer.setTimeout(FRONTEND_TIMEOUT);
 	std::cout << "Listening on port " << DEFAULT_PORT << std::endl;
-
-	server.setup(config.server.cert.c_str(), config.server.key.c_str());
-	std::cout << "Configured TLS server" << std::endl;
-
-	server.setTimeout(FRONTEND_TIMEOUT);
 	std::cout << "Ready to go" << std::endl;
 
 	// Handle requests
 	char buffer[BUFFER_SIZE];
 	while(true) {
-		// Get path
-		auto conn = server.acc();
+		auto conn = globalServer.acc();
+
+		// Get path. It must be done before sending anything
 		auto line = conn.recvl();
 		if(!line.size()) {
 			conn.cl(); continue;
 		}
+
+		// Is server name known?
+		std::string capsuleName;
+		auto it = globalServer.names.find(conn.getSN());
+		if(it == globalServer.names.end()) {
+			// Unknown. Is default explicitly set?
+			if(globalConfig.hasExplicitDefault) {
+				// Yep, no worries
+				capsuleName = globalConfig.def;
+			} else {
+				// No; reject the request
+				conn.send("51 zodiac: unrecognized server name\r\n");
+				conn.cl(); continue;
+			}
+		} else {
+			// Nice
+			capsuleName = (*it).second;
+		}
+
+		auto& capsule = globalConfig.capsules[capsuleName];
 
 		// Connect to backend
 		int backend = socket(AF_INET, SOCK_STREAM, 0);
@@ -38,7 +68,7 @@ int main() {
 			conn.send("43 zodiac: crowded\r\n");
 			conn.cl(); continue;
 		}
-		if(connect(backend, (struct sockaddr*)&(config.server.saddr),
+		if(connect(backend, (struct sockaddr*)&(capsule.saddr),
 			       sizeof(sockaddr)) < 0) {
 			conn.send("43 zodiac: could not connect to backend\r\n");
 			conn.cl(); continue;
@@ -50,7 +80,7 @@ int main() {
 		send(backend, conn.ip.c_str(), conn.ip.size(), 0);
 		send(backend, "\r\n", 2, 0);
 
-		// Timeout
+		// Backend timeout
 		timeval timeout;
 		timeout.tv_sec = BACKEND_TIMEOUT;
 		timeout.tv_usec = 0;

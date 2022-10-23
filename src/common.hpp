@@ -4,4 +4,7 @@
 #include <tls/tls.hpp>
 #include <config/config.hpp>
 
+extern Config globalConfig;
+extern TLS::Server globalServer;
+
 #endif
