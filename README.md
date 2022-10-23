@@ -22,7 +22,7 @@ port = 7000 ; Backend, required
 The `server` field can be a domain name. In that case, it will be resolved once before accepting requests.
 
 ## Additional information
-- The [first version](link pending) was written in 4 hours, one hour after [knowing it exists](https://youtu.be/K-en4nEV5Xc).
+- The [first version](https://github.com/jlxip/zodiac/tree/0.1.0) was written in 4 hours, one hour after [knowing it exists](https://youtu.be/K-en4nEV5Xc).
 - Zodiac follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 - Dependencies: openssl and [iniparser](https://github.com/ndevilla/iniparser).
 
