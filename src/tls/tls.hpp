@@ -30,10 +30,15 @@ namespace TLS {
 	private:
 		int sock;
 		SSL_CTX* ctx;
+		timeval timeout;
 
 	public:
 		Server(uint16_t port);
 		void setup(const char* cert, const char* key); // Paths
+		inline void setTimeout(size_t s) {
+			timeout.tv_sec = s;
+			timeout.tv_usec = 0;
+		}
 		Connection acc();
 		void cl();
 	};

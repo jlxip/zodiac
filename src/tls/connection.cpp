@@ -18,8 +18,6 @@ std::string TLS::Connection::recvl() {
 		ret += c;
 	}
 
-	// TODO, SECURITY: avoid RUDY attack
-
 	return ret;
 }
 

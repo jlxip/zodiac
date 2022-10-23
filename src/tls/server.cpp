@@ -56,6 +56,9 @@ TLS::Connection TLS::Server::acc() {
 		exit(EXIT_FAILURE);
 	}
 
+	// Set timeout
+	setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
+
 	SSL* ssl = SSL_new(ctx);
 	SSL_set_fd(ssl, client);
 	if(SSL_accept(ssl) <= 0) {

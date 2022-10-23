@@ -27,7 +27,7 @@ The `server` field can be a domain name. In that case, it will be resolved once 
 - Dependencies: openssl and [iniparser](https://github.com/ndevilla/iniparser).
 
 ## Things to do before 1.0.0
-- [ ] Timeouts
+- [x] Timeouts
 - [ ] More than one server
 - [ ] Worker threads (global to the server)
 - [ ] More config (listening IP, port, timeouts)

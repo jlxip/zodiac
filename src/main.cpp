@@ -4,6 +4,8 @@
 
 // This will be in config soon
 #define DEFAULT_PORT 1965
+#define FRONTEND_TIMEOUT 5
+#define BACKEND_TIMEOUT 5
 
 #define BUFFER_SIZE 1024
 
@@ -17,6 +19,7 @@ int main() {
 	server.setup(config.server.cert.c_str(), config.server.key.c_str());
 	std::cout << "Configured TLS server" << std::endl;
 
+	server.setTimeout(FRONTEND_TIMEOUT);
 	std::cout << "Ready to go" << std::endl;
 
 	// Handle requests
@@ -47,11 +50,23 @@ int main() {
 		send(backend, conn.ip.c_str(), conn.ip.size(), 0);
 		send(backend, "\r\n", 2, 0);
 
+		// Timeout
+		timeval timeout;
+		timeout.tv_sec = BACKEND_TIMEOUT;
+		timeout.tv_usec = 0;
+		setsockopt(backend, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
+
 		// Get response
 		while(true) {
 			int got = recv(backend, buffer, BUFFER_SIZE, 0);
-			if(got <= 0)
+			if(!got)
+				break; // That's it
+
+			if(got == -1) {
+				conn.send("43 zodiac: backend timed out\r\n");
 				break;
+			}
+
 			conn.send(buffer, got);
 		}
 
