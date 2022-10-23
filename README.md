@@ -30,7 +30,7 @@ The `server` field can be a domain name. In that case, it will be resolved once 
 - [ ] Timeouts
 - [ ] More than one server
 - [ ] Worker threads (global to the server)
-- [ ] More config (listening IP, port)
+- [ ] More config (listening IP, port, timeouts)
 - [ ] RR load balancing
 - [ ] Config file in other place (`$ZODIAC_CONFIG`)
 - [ ] CI/CD

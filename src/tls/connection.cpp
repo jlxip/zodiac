@@ -30,6 +30,9 @@ bool TLS::Connection::send(const char* buffer, size_t n) {
 }
 
 void TLS::Connection::cl() {
+	if(!ssl)
+		return;
+
 	SSL_shutdown(ssl);
 	SSL_free(ssl);
 	close(client);

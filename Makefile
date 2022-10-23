@@ -39,7 +39,7 @@ $(RESULT): $(OBJS)
 		strip $(RESULT); \
 	fi
 
--include $(CXX_OBJS:.o=.o.d)
+-include $(OBJS:.o=.o.d)
 
 $(OBJS): $(OBJPATH)/%.o: $(SRCPATH)/%.cpp | $(OBJPATHS)
 	@echo "[$(PROJNAME)] ===> $<"
