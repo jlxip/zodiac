@@ -1,13 +1,12 @@
 #include <iostream>
 #include <common.hpp>
 #include <unistd.h>
+#include <sys/mman.h>
 
 // These will be in config soon
 #define DEFAULT_PORT 1965
 #define FRONTEND_TIMEOUT 5
 #define BACKEND_TIMEOUT 5
-
-#define BUFFER_SIZE 1024
 
 Config globalConfig;
 TLS::Server globalServer;
@@ -31,8 +30,12 @@ int main() {
 	std::cout << "Listening on port " << DEFAULT_PORT << std::endl;
 	std::cout << "Ready to go" << std::endl;
 
+	// Get a page for cached response movement
+	size_t pageSize = sysconf(_SC_PAGE_SIZE);
+	char* buffer = (char*)mmap(0, pageSize, PROT_READ | PROT_WRITE,
+							   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
 	// Handle requests
-	char buffer[BUFFER_SIZE];
 	while(true) {
 		auto conn = globalServer.acc();
 
@@ -88,7 +91,7 @@ int main() {
 
 		// Get response
 		while(true) {
-			int got = recv(backend, buffer, BUFFER_SIZE, 0);
+			int got = recv(backend, buffer, pageSize, 0);
 			if(!got)
 				break; // That's it
 

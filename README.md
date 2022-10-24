@@ -32,7 +32,7 @@ port = 7001
 ```
 
 - The `zodiac` section is the root of the configuration file. Its field `enabled` links to other sections, each describing a capsule.
-- On each frontend section, only `name` and `port` are mandatory.
+- On each capsule section, only `name` and `port` are mandatory.
 - One of the capsules should be the default, marked with `default = true`.
   - It will be the one provided for requests either without SNI or with an unrecognized server name.
   - It does not require a `name` field, but one can be given to use an existing capsule (see example above).
