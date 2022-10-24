@@ -20,7 +20,7 @@ An example configuration file is as follows:
 ;listenPort = 1965 ; This is the default as well
 frontTimeout = 3 ; Seconds until connections to zodiac time out. Default is 5 seconds
 backTimeout = 10 ; Seconds until connections to backends time out. Default is 5 seconds
-enabled = mycapsule, other
+enabled = mycapsule, other ; Read below the example
 
 ; The following is a capsule using all provided options
 [mycapsule]
@@ -33,20 +33,21 @@ port = 7000 ; Backend, required
 frontTimeout = 1 ; You can override this value for a given capsule
 backTimeout = 1  ; and this one
 
-; The following is a capsule using defaults
+; The following is a capsule using the defaults
 [other]
 name = other.arpa
 port = 7001
 ```
 
+- The configuration file defaults to `./zodiac.conf`. A different one can be specified via `$ZODIAC_CONFIG`.
 - The `zodiac` section is the root of the configuration file. Its field `enabled` links to other sections, each describing a capsule.
-- On each capsule section, only `name` and `port` are mandatory.
-- One of the capsules should be the default, marked with `default = true`.
+- In each capsule section, only `name` and `port` are mandatory.
+- One of the capsules can be the default, marked with `default = true`.
   - It will be the one provided for requests either without SNI or with an unrecognized server name.
   - It does not require a `name` field, but one can be given to use an existing capsule (see example above).
   - If no default capsule is specified, one will be chosen at random for its TLS certificate, and zodiac will return status code 41 (`NOT FOUND`).
 - The `backend` field can be a domain name. In that case, it will be resolved once before accepting requests.
-- If you want capsules on different ports, you can run two instances of zodiac without issues.
+- If you want capsules on different ports, you can run two instances of zodiac without issues. I'm not implementing it since it makes things messy.
 
 ## Additional information
 - The [first version](https://github.com/jlxip/zodiac/tree/0.1.0) was written in 4 hours, one hour after [knowing Gemini exists](https://youtu.be/K-en4nEV5Xc).
@@ -59,6 +60,6 @@ port = 7001
 - [ ] Worker threads (global to the server)
 - [x] More config (listening IP, port, timeouts)
 - [ ] RR load balancing
-- [ ] Config file in other place (`$ZODIAC_CONFIG`)
+- [x] Config file in other place (`$ZODIAC_CONFIG`)
 - [ ] CI/CD
 - [ ] Docker image

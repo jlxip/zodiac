@@ -27,6 +27,6 @@ struct Config {
 	std::string def; // Default
 };
 
-Config parseConfig(const char* path = "zodiac.conf");
+Config parseConfig(const char* path);
 
 #endif

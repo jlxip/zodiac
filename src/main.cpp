@@ -3,13 +3,23 @@
 #include <unistd.h>
 #include <sys/mman.h>
 
+const char* defaultConfigPath = "zodiac.conf";
+
 Config globalConfig;
 TLS::Server globalServer;
 
 int main() {
 	std::cout << "Zodiac starting. Parsing configuration..." << std::endl;
-	globalConfig = parseConfig();
-	globalServer = {0};
+	const char* configPath = getenv("ZODIAC_CONFIG");
+	if(!configPath)
+		configPath = defaultConfigPath;
+	if(access(configPath, F_OK) != 0) {
+		std::cerr << "Could not open file: " << configPath << std::endl;
+		exit(EXIT_FAILURE);
+	}
+
+	globalConfig = parseConfig(configPath);
+	globalServer = {0}; // Reinitialize globalServer now that there's config
 
 	std::cout << "Setting up capsules..." << std::endl;
 	for(auto const& x : globalConfig.capsules) {

@@ -78,9 +78,17 @@ Config parseConfig(const char* path) {
 				<< "No \"name\" key for capsule \"" << x << "\"."
 				<< std::endl;
 			exit(EXIT_FAILURE);
+		} else if(access(s.cert.c_str(), F_OK) != 0) {
+			std::cerr
+				<< "Could not open: " << s.cert
+				<< std::endl;
+			exit(EXIT_FAILURE);
+		} else if(access(s.key.c_str(), F_OK) != 0) {
+			std::cerr
+				<< "Could not open: " << s.key
+				<< std::endl;
+			exit(EXIT_FAILURE);
 		}
-
-		// TODO check files for prettier error
 
 		if(!s.port) {
 			std::cerr
