@@ -1,5 +1,13 @@
 #include "tls.hpp"
 #include <unistd.h>
+#include <sys/socket.h>
+
+void TLS::Connection::setTimeout(size_t s) {
+	timeval to;
+	to.tv_sec = s;
+	to.tv_usec = 0;
+	setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &to, sizeof to);
+}
 
 std::string TLS::Connection::recvl() {
 	if(!ssl)

@@ -29,6 +29,12 @@ Config parseConfig(const char* path) {
 	Config ret;
 	auto* dict = iniparser_load(path);
 
+	// Get global options
+	ret.listenIP = iniparser_getstring(dict, "zodiac:listenIP", "0.0.0.0");
+	ret.listenPort = iniparser_getint(dict, "zodiac:listenPort", 1965);
+	ret.frontTimeout = iniparser_getint(dict, "zodiac:frontTimeout", 5);
+	ret.backTimeout = iniparser_getint(dict, "zodiac:backTimeout", 5);
+
 	// Get enabled capsules
 	const char* rawenabled = iniparser_getstring(dict, "zodiac:enabled", "");
 	if(!rawenabled) {
@@ -48,6 +54,8 @@ Config parseConfig(const char* path) {
 		s.key = iniparser_getstring(dict, (x+":key").c_str(), "key.pem");
 		s.backend = iniparser_getstring(dict, (x+":backend").c_str(), "localhost");
 		s.port = iniparser_getint(dict, (x+":port").c_str(), 0);
+		s.frontTimeout = iniparser_getint(dict, (x+":frontTimeout").c_str(), 0);
+		s.backTimeout = iniparser_getint(dict, (x+":backTimeout").c_str(), 0);
 
 		// Is it default?
 		bool isDefault = iniparser_getboolean(dict, (x+":default").c_str(), 0);

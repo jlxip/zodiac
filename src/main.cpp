@@ -3,18 +3,13 @@
 #include <unistd.h>
 #include <sys/mman.h>
 
-// These will be in config soon
-#define DEFAULT_PORT 1965
-#define FRONTEND_TIMEOUT 5
-#define BACKEND_TIMEOUT 5
-
 Config globalConfig;
 TLS::Server globalServer;
 
 int main() {
 	std::cout << "Zodiac starting. Parsing configuration..." << std::endl;
 	globalConfig = parseConfig();
-	globalServer = {DEFAULT_PORT};
+	globalServer = {0};
 
 	std::cout << "Setting up capsules..." << std::endl;
 	for(auto const& x : globalConfig.capsules) {
@@ -26,9 +21,10 @@ int main() {
 	}
 	globalServer.defaultContext = globalServer.ctxs[globalConfig.def];
 
-	globalServer.setTimeout(FRONTEND_TIMEOUT);
-	std::cout << "Listening on port " << DEFAULT_PORT << std::endl;
-	std::cout << "Ready to go" << std::endl;
+	std::cout
+		<< "Listening on "
+		<< globalConfig.listenIP << ':'
+		<< globalConfig.listenPort << std::endl;
 
 	// Get a page for cached response movement
 	size_t pageSize = sysconf(_SC_PAGE_SIZE);
@@ -39,14 +35,9 @@ int main() {
 	while(true) {
 		auto conn = globalServer.acc();
 
-		// Get path. It must be done before sending anything
-		auto line = conn.recvl();
-		if(!line.size()) {
-			conn.cl(); continue;
-		}
-
-		// Is server name known?
+		// Get server name
 		std::string capsuleName;
+		bool doomed = false;
 		auto it = globalServer.names.find(conn.getSN());
 		if(it == globalServer.names.end()) {
 			// Unknown. Is default explicitly set?
@@ -55,12 +46,33 @@ int main() {
 				capsuleName = globalConfig.def;
 			} else {
 				// No; reject the request
-				conn.send("51 zodiac: unrecognized server name\r\n");
-				conn.cl(); continue;
+				// Can't do it right now, request has to come first,
+				//   the client doesn't like it any other way
+				doomed = true;
 			}
 		} else {
 			// Nice
 			capsuleName = (*it).second;
+		}
+
+		// Get frontend timeout
+		if(!doomed) {
+			size_t ft = globalConfig.capsules[capsuleName].frontTimeout;
+			if(!ft)
+				ft = globalConfig.frontTimeout;
+			conn.setTimeout(ft);
+		}
+
+		// Get path. It must be done before sending anything
+		auto line = conn.recvl();
+		if(!line.size()) {
+			conn.cl(); continue;
+		}
+
+		// Are we doomed?
+		if(doomed) {
+			conn.send("51 zodiac: unrecognized server name\r\n");
+			conn.cl(); continue;
 		}
 
 		auto& capsule = globalConfig.capsules[capsuleName];
@@ -84,8 +96,11 @@ int main() {
 		send(backend, "\r\n", 2, 0);
 
 		// Backend timeout
+		size_t bt = capsule.backTimeout;
+		if(!bt)
+			bt = globalConfig.backTimeout;
 		timeval timeout;
-		timeout.tv_sec = BACKEND_TIMEOUT;
+		timeout.tv_sec = bt;
 		timeout.tv_usec = 0;
 		setsockopt(backend, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
 

@@ -1,15 +1,16 @@
-#include "tls.hpp"
+#include <common.hpp>
 #include <iostream>
 #include <unistd.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
 #include <openssl/err.h>
 
-TLS::Server::Server(uint16_t port) {
+TLS::Server::Server(int) {
+	auto port = globalConfig.listenPort;
+
 	sockaddr_in addr;
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
-	addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	addr.sin_addr.s_addr = inet_addr(globalConfig.listenIP.c_str());
 
 	sock = socket(AF_INET, SOCK_STREAM, 0);
 	if(sock < 0) {
@@ -43,9 +44,6 @@ TLS::Connection TLS::Server::acc() {
 		std::cerr << "Unable to accept" << std::endl;
 		exit(EXIT_FAILURE);
 	}
-
-	// Set timeout
-	setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
 
 	SSL* ssl = SSL_new(defaultContext);
 	SSL_set_fd(ssl, client);

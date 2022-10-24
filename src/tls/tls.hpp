@@ -23,6 +23,7 @@ namespace TLS {
 			return SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
 		}
 
+		void setTimeout(size_t s);
 		std::string recvl(); // Receive line
 		bool send(const char* buffer, size_t n);
 		inline bool send(const std::string& msg) {
@@ -41,7 +42,6 @@ namespace TLS {
 	class Server {
 	private:
 		int sock;
-		timeval timeout;
 
 	public:
 		SSL_CTX* defaultContext = nullptr;
@@ -49,11 +49,7 @@ namespace TLS {
 		std::unordered_map<std::string, std::string> names;
 
 		Server() : sock(-1) {}
-		Server(uint16_t port);
-		inline void setTimeout(size_t s) {
-			timeout.tv_sec = s;
-			timeout.tv_usec = 0;
-		}
+		Server(int);
 		Connection acc();
 		void cl();
 	};

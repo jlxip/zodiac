@@ -12,11 +12,14 @@ struct CapsuleConfig {
 	std::string backend;
 	uint16_t port;
 	sockaddr_in saddr;
+
+	size_t frontTimeout, backTimeout;
 };
 
 struct Config {
-	//uint32_t ip = 0; // Where to listen, TODO
-	//uint16_t port = 1965;
+	std::string listenIP;
+	uint16_t listenPort;
+	size_t frontTimeout, backTimeout;
 	//uint16_t workers = 3; // TODO
 
 	std::unordered_map<std::string, CapsuleConfig> capsules;
