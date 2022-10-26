@@ -3,6 +3,9 @@ PROJNAME := zodiac
 RESULT := zodiac
 
 LIBS := ssl crypto iniparser
+EXCLUDE := ./worker/scheduler/upq/*
+
+
 
 SHELL := /bin/bash
 SRCPATH := src
@@ -21,8 +24,10 @@ LINKER_FLAGS := -Wl,-z,relro,-z,now
 LINKER_FLAGS_END := $(patsubst %,-l%,$(LIBS))
 
 # --- OBJS ---
-OBJPATHS := $(shell cd src && find . -type d | xargs -I {} echo "$(OBJPATH)/"{})
-OBJS := $(shell cd src && find . -type f -iname '*.cpp' | sed 's/\.\///g' | sed 's/\.cpp/\.o/g' | xargs -I {} echo "$(OBJPATH)/"{})
+OBJPATHS := $(shell cd src && find . -type d ! -path "$(EXCLUDE)" | \
+	xargs -I {} echo "$(OBJPATH)/"{})
+OBJS := $(shell cd src && find . -type f -iname '*.cpp' ! -path "$(EXCLUDE)" | \
+	sed 's/\.\///g' | sed 's/\.cpp/\.o/g' | xargs -I {} echo "$(OBJPATH)/"{})
 
 .PHONY: all clean
 all: $(RESULT)

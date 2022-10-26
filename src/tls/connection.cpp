@@ -1,38 +1,65 @@
-#include "tls.hpp"
+#include <common.hpp>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <iostream>
 
-void TLS::Connection::setTimeout(size_t s) {
-	timeval to;
-	to.tv_sec = s;
-	to.tv_usec = 0;
-	setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &to, sizeof to);
+void TLS::Connection::createSSL() {
+	ssl = SSL_new(globalServer.defaultContext);
+	SSL_set_fd(ssl, client);
+	SSL_CTX_set_tlsext_servername_callback(globalServer.defaultContext, sniCallback);
+	SSL_set_accept_state(ssl); // Not actually needed but good practice
 }
 
-std::string TLS::Connection::recvl() {
-	if(!ssl)
-		return {};
+bool TLS::Connection::doHandshake() {
+	if(SSL_is_init_finished(ssl))
+		return 0;
 
-	std::string ret;
-
-	// Just read until CR (assumed LF comes after), or LF
-	// TODO: can this be an issue with unicode URLs?
-	char c;
-	while(true) {
-		if(SSL_read(ssl, &c, 1) <= 0)
-			return {};
-		if(c == '\r' || c == '\n')
-			break;
-		ret += c;
+	int r = SSL_accept(ssl);
+	if(r == -1) {
+		r = SSL_get_error(ssl, r);
+		if(r != SSL_ERROR_WANT_READ && r != SSL_ERROR_WANT_WRITE) {
+			// Not a requirement, so it actually failed
+			return false;
+		}
 	}
 
-	return ret;
+	return true;
 }
 
-bool TLS::Connection::send(const char* buffer, size_t n) {
+bool TLS::Connection::checkHandshake() {
+	return SSL_is_init_finished(ssl);
+}
+
+
+
+int TLS::Connection::recv(char* buffer, size_t offset, size_t max) {
 	if(!ssl)
-		return false;
-	return SSL_write(ssl, buffer, n) > 0;
+		return -1;
+
+	int r = SSL_read(ssl, buffer+offset, max - offset);
+	if(r <= 0) {
+		r = SSL_get_error(ssl, r);
+		if(r != SSL_ERROR_WANT_READ && r != SSL_ERROR_WANT_WRITE)
+			return -1; // Error
+		return 0; // Nothing new
+	}
+
+	return r; // Got something
+}
+
+int TLS::Connection::send(const char* buffer, size_t n) {
+	if(!ssl)
+		return -1;
+
+	int r = SSL_write(ssl, buffer, n);
+	if(r <= 0) {
+		r = SSL_get_error(ssl, r);
+		if(r != SSL_ERROR_WANT_READ && r != SSL_ERROR_WANT_WRITE)
+			return -1; // Error
+		return 0;
+	}
+
+	return r;
 }
 
 void TLS::Connection::cl() {

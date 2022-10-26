@@ -4,28 +4,45 @@
 #include <string>
 #include <openssl/ssl.h>
 #include <unordered_map>
+#include <arpa/inet.h>
+
+/*
+	This is sort of a simple TLS wrapper, but very specific for the
+	  purposes of this project. Non-blocking.
+*/
 
 namespace TLS {
 	// One of these per connection
 	class Connection {
 	private:
-		SSL* ssl;
-		int client;
+		SSL* ssl = nullptr;
+		int client = 0;
+		sockaddr_in addr;
 
 	public:
-		std::string ip;
-
-		inline Connection(SSL* ssl=nullptr, int client=0, std::string ip="")
-			: ssl(ssl), client(client), ip(ip)
+		Connection() = default;
+		Connection(int client, sockaddr_in addr)
+			: client(client), addr(addr)
 		{}
 
+		// Before handshake
+		void createSSL();
+		bool doHandshake();
+		bool checkHandshake();
+
+		// After handshake
 		inline std::string getSN() {
 			return SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
 		}
 
-		void setTimeout(size_t s);
-		std::string recvl(); // Receive line
-		bool send(const char* buffer, size_t n);
+		inline std::string getIP() {
+			char aux[INET_ADDRSTRLEN];
+			inet_ntop(AF_INET, &(addr.sin_addr), aux, INET_ADDRSTRLEN);
+			return aux;
+		}
+
+		int recv(char* buffer, size_t offset, size_t max);
+		int send(const char* buffer, size_t n);
 		inline bool send(const std::string& msg) {
 			return send(&msg[0], msg.size());
 		}
@@ -39,18 +56,14 @@ namespace TLS {
 	int sniCallback(SSL* ssl, int* al, void* arg);
 
 	// Singleton
-	class Server {
-	private:
+	struct Server {
 		int sock;
-
-	public:
 		SSL_CTX* defaultContext = nullptr;
 		std::unordered_map<std::string, SSL_CTX*> ctxs;
 		std::unordered_map<std::string, std::string> names;
 
 		Server() : sock(-1) {}
 		Server(int);
-		Connection acc();
 		void cl();
 	};
 };

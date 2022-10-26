@@ -1,14 +1,13 @@
-# zodiac: a reverse proxy for Gemini
+# zodiac
 
 ## Introduction
-[Gemini](https://gemini.circumlunar.space/) is an internet protocol like Gopher, but modern.
+Zodiac is a low-footprint high-performance reverse proxy (and, very soon, load balancer) for [Gemini](https://gemini.circumlunar.space/), written in C++. Think of it like an nginx for Gemini.
 
-This is a reverse proxy (and, very soon, load balancer) for it, written in C++ (so, really really fast), which aims to be as simple as possible.
-
-As a reverse proxy, zodiac only does three things:
+This project:
 - Soothes the Gemini backend creation, by abstracting everything regarding TLS.
-- Demultiplexes requests using SNI.
+- Performs demultiplexing of requests via SNI.
 - Returns status code 43 (`PROXY ERROR`) in case the backend doesn't answer.
+- Can handle many simultaneous connections with very little resources.
 
 The backend receives `<URL><CR><LF><Client's IP><CR><LF>`. This way, the specification is not broken (the second line can be ignored), but there's transparency across the proxy.
 
@@ -20,7 +19,10 @@ An example configuration file is as follows:
 ;listenPort = 1965 ; This is the default as well
 frontTimeout = 3 ; Seconds until connections to zodiac time out. Default is 5 seconds
 backTimeout = 10 ; Seconds until connections to backends time out. Default is 5 seconds
-enabled = mycapsule, other ; Read below the example
+hsTimeout = 5 ; Seconds until TLS handshake times out. Default is 5 seconds
+workers = 5 ; Read below
+buffers = 512 ; Read below
+enabled = mycapsule, other ; Read below
 
 ; The following is a capsule using all provided options
 [mycapsule]
@@ -40,7 +42,20 @@ port = 7001
 ```
 
 - The configuration file defaults to `./zodiac.conf`. A different one can be specified via `$ZODIAC_CONFIG`.
-- The `zodiac` section is the root of the configuration file. Its field `enabled` links to other sections, each describing a capsule.
+- The `[zodiac]` section is the root of the configuration file. Its field `enabled` links to other sections, each describing a capsule.
+- The `workers` key in `[zodiac]` specifies the number of worker threads.
+  - Default value is `0`, which means _as many as threads in the CPU_.
+  - Do not use more than the number of cores: it will throttle. They are not directly related to how many simultaneous connections zodiac can handle.
+- The `buffers` key specifies how many pages should be reserved for proxying.
+  - This does actually put a limit to the number of simultaneous connections. If no buffers are available, new connections will be kept open waiting until there's one.
+  - Pages are balanced across worker threads in order to maximize L1 cache hits, so `buffers` should be a multiple of `workers`. If it's not, it will be rounded down to the closest multiple.
+  - In most architectures, regular pages are 4KiB long.
+  - The default value is 256 (so 1MiB total).
+- Regarding timeouts:
+  - Timeouts refer to the whole duration of the process, not only idle time.
+  - They cannot be disabled due to security issues. `0` will not disable them.
+  - `frontTimeout` and `backTimeout` can be overriden in a capsule section, but not `hsTimeout`, since before the handshake finishes the capsule cannot be identified.
+  - `backTimeout` is used both for the backend connection and the response reception, so bear in mind, if you want to dive this deep, that a connection to the backend could take at max 2x`backTimeout`.
 - In each capsule section, only `name` and `port` are mandatory.
 - One of the capsules can be the default, marked with `default = true`.
   - It will be the one provided for requests either without SNI or with an unrecognized server name.
@@ -57,9 +72,13 @@ port = 7001
 ## Things to do before 1.0.0
 - [x] Timeouts
 - [x] Multiple capsules
-- [ ] Worker threads (global to the server)
+- [x] Worker threads
 - [x] More config (listening IP, port, timeouts)
 - [ ] RR load balancing
 - [x] Config file in other place (`$ZODIAC_CONFIG`)
 - [ ] CI/CD
 - [ ] Docker image
+- [ ] Stress test
+
+## Special thanks
+- To @Ten0 for [their updatable priority queue implementation](https://github.com/Ten0/updatable_priority_queue), included as a submodule at `src/upq`, which makes the worker thread scheduler much simpler.

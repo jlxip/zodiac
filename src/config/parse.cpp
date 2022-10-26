@@ -1,29 +1,8 @@
-#include "config.hpp"
+#include <common.hpp>
 #include <iostream>
 #include <iniparser.h>
 #include <unistd.h>
 #include <netdb.h>
-#include <vector>
-
-std::vector<std::string> commaSplit(const char* str) {
-	std::vector<std::string> ret;
-
-	std::string aux;
-	for(size_t i=0; str[i]; ++i) {
-		char c = str[i];
-		if(c == ',') {
-			ret.push_back(aux);
-			aux.clear();
-		} else if(c != ' ') {
-			// Ignore all spaces
-			aux += c;
-		}
-	}
-
-	if(aux.size())
-		ret.push_back(aux);
-	return ret;
-}
 
 Config parseConfig(const char* path) {
 	Config ret;
@@ -34,6 +13,9 @@ Config parseConfig(const char* path) {
 	ret.listenPort = iniparser_getint(dict, "zodiac:listenPort", 1965);
 	ret.frontTimeout = iniparser_getint(dict, "zodiac:frontTimeout", 5);
 	ret.backTimeout = iniparser_getint(dict, "zodiac:backTimeout", 5);
+	ret.hsTimeout = iniparser_getint(dict, "zodiac:hsTimeout", 5);
+	ret.workers = iniparser_getint(dict, "zodiac:workers", 0);
+	ret.buffers = iniparser_getint(dict, "zodiac:buffers", 256);
 
 	// Get enabled capsules
 	const char* rawenabled = iniparser_getstring(dict, "zodiac:enabled", "");

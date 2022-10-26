@@ -1,7 +1,6 @@
 #include <common.hpp>
 #include <iostream>
 #include <unistd.h>
-#include <arpa/inet.h>
 #include <openssl/err.h>
 
 TLS::Server::Server(int) {
@@ -33,34 +32,6 @@ TLS::Server::Server(int) {
 		std::cerr << "Unable to listen on port " << port << std::endl;
 		exit(EXIT_FAILURE);
 	}
-}
-
-TLS::Connection TLS::Server::acc() {
-	sockaddr_in addr;
-	uint32_t len = sizeof(addr);
-
-	int client = accept(sock, (struct sockaddr*)&addr, &len);
-	if(client < 0) {
-		std::cerr << "Unable to accept" << std::endl;
-		exit(EXIT_FAILURE);
-	}
-
-	SSL* ssl = SSL_new(defaultContext);
-	SSL_set_fd(ssl, client);
-	SSL_CTX_set_tlsext_servername_callback(defaultContext, sniCallback);
-	if(SSL_accept(ssl) <= 0) {
-		ERR_print_errors_fp(stderr);
-		SSL_shutdown(ssl);
-		SSL_free(ssl);
-		close(client);
-		return {};
-	}
-
-	// Get client's IP
-	char ip[INET_ADDRSTRLEN];
-	inet_ntop(AF_INET, &(addr.sin_addr), ip, INET_ADDRSTRLEN);
-
-	return {ssl, client, ip};
 }
 
 void TLS::Server::cl() {

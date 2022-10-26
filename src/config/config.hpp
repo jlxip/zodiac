@@ -19,8 +19,8 @@ struct CapsuleConfig {
 struct Config {
 	std::string listenIP;
 	uint16_t listenPort;
-	size_t frontTimeout, backTimeout;
-	//uint16_t workers = 3; // TODO
+	size_t frontTimeout, backTimeout, hsTimeout;
+	size_t workers, buffers;
 
 	std::unordered_map<std::string, CapsuleConfig> capsules;
 	bool hasExplicitDefault = false;

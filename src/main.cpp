@@ -1,12 +1,18 @@
 #include <iostream>
 #include <common.hpp>
 #include <unistd.h>
-#include <sys/mman.h>
+#include <pthread.h>
+#include <worker/worker.hpp>
+#include <fcntl.h>
 
 const char* defaultConfigPath = "zodiac.conf";
 
 Config globalConfig;
 TLS::Server globalServer;
+Scheduler sched;
+
+// A gentle introduction to non-blocking sockets:
+// https://www.scottklement.com/rpg/socktut/nonblocking.html
 
 int main() {
 	std::cout << "Zodiac starting. Parsing configuration..." << std::endl;
@@ -21,6 +27,7 @@ int main() {
 	globalConfig = parseConfig(configPath);
 	globalServer = {0}; // Reinitialize globalServer now that there's config
 
+	// Prepare TLS contexts to be used in the server name callback
 	std::cout << "Setting up capsules..." << std::endl;
 	for(auto const& x : globalConfig.capsules) {
 		std::cout << "-> Enabling " << x.first << std::endl;
@@ -31,74 +38,53 @@ int main() {
 	}
 	globalServer.defaultContext = globalServer.ctxs[globalConfig.def];
 
+	// Spawn worker threads
+	size_t workers = globalConfig.workers;
+	if(!workers)
+		globalConfig.workers = workers = nproc(); // Overwriting config
+	std::cout << "Spawning " << workers << " worker threads..." << std::endl;
+	tasks = std::move(std::vector<SafeQueue<Task>>(workers));
+	for(size_t i=0; i<workers; ++i) {
+		sched.init(i);
+		pthread_t thread;
+		pthread_create(&thread, NULL, worker, (void*)i);
+	}
+
 	std::cout
 		<< "Listening on "
 		<< globalConfig.listenIP << ':'
 		<< globalConfig.listenPort << std::endl;
 
-	// Get a page for cached response movement
-	size_t pageSize = sysconf(_SC_PAGE_SIZE);
-	char* buffer = (char*)mmap(0, pageSize, PROT_READ | PROT_WRITE,
-							   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
 	// Handle requests
 	while(true) {
-		auto conn = globalServer.acc();
+		// Accept a connection
+		sockaddr_in addr;
+		uint32_t len = sizeof(addr);
+		int client = accept(globalServer.sock, (struct sockaddr*)&addr, &len);
+		if(client < 0)
+			continue;
 
-		// Get server name
-		std::string capsuleName;
-		bool doomed = false;
-		auto it = globalServer.names.find(conn.getSN());
-		if(it == globalServer.names.end()) {
-			// Unknown. Is default explicitly set?
-			if(globalConfig.hasExplicitDefault) {
-				// Yep, no worries
-				capsuleName = globalConfig.def;
-			} else {
-				// No; reject the request
-				// Can't do it right now, request has to come first,
-				//   the client doesn't like it any other way
-				doomed = true;
-			}
-		} else {
-			// Nice
-			capsuleName = (*it).second;
+		// We're going non-blocking
+		int flags = fcntl(client, F_GETFL);
+		if(flags < 0) {
+			close(client);
+			continue;
+		}
+		if(fcntl(client, F_SETFL, flags | O_NONBLOCK) < 0) {
+			close(client);
+			continue;
 		}
 
-		// Get frontend timeout
-		if(!doomed) {
-			size_t ft = globalConfig.capsules[capsuleName].frontTimeout;
-			if(!ft)
-				ft = globalConfig.frontTimeout;
-			conn.setTimeout(ft);
-		}
+		// Create the task
+		Task task;
+		task.conn = {client, addr};
 
-		// Get path. It must be done before sending anything
-		auto line = conn.recvl();
-		if(!line.size()) {
-			conn.cl(); continue;
-		}
+		// Assign it to a worker thread
+		size_t id = sched.top();
+		tasks[id].push(task);
+		sched.inc(id);
 
-		// Are we doomed?
-		if(doomed) {
-			conn.send("51 zodiac: unrecognized server name\r\n");
-			conn.cl(); continue;
-		}
-
-		auto& capsule = globalConfig.capsules[capsuleName];
-
-		// Connect to backend
-		int backend = socket(AF_INET, SOCK_STREAM, 0);
-		if(backend < 0) {
-			conn.send("43 zodiac: crowded\r\n");
-			conn.cl(); continue;
-		}
-		if(connect(backend, (struct sockaddr*)&(capsule.saddr),
-			       sizeof(sockaddr)) < 0) {
-			conn.send("43 zodiac: could not connect to backend\r\n");
-			conn.cl(); continue;
-		}
-
+		/*
 		// Send line and client's IP
 		send(backend, line.c_str(), line.size(), 0);
 		send(backend, "\r\n", 2, 0);
@@ -129,6 +115,6 @@ int main() {
 		}
 
 		close(backend);
-		conn.cl();
+		conn.cl();*/
 	}
 }
