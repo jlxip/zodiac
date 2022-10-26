@@ -83,38 +83,5 @@ int main() {
 		size_t id = sched.top();
 		tasks[id].push(task);
 		sched.inc(id);
-
-		/*
-		// Send line and client's IP
-		send(backend, line.c_str(), line.size(), 0);
-		send(backend, "\r\n", 2, 0);
-		send(backend, conn.ip.c_str(), conn.ip.size(), 0);
-		send(backend, "\r\n", 2, 0);
-
-		// Backend timeout
-		size_t bt = capsule.backTimeout;
-		if(!bt)
-			bt = globalConfig.backTimeout;
-		timeval timeout;
-		timeout.tv_sec = bt;
-		timeout.tv_usec = 0;
-		setsockopt(backend, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
-
-		// Get response
-		while(true) {
-			int got = recv(backend, buffer, pageSize, 0);
-			if(!got)
-				break; // That's it
-
-			if(got == -1) {
-				conn.send("43 zodiac: backend timed out\r\n");
-				break;
-			}
-
-			conn.send(buffer, got);
-		}
-
-		close(backend);
-		conn.cl();*/
 	}
 }

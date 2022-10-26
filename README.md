@@ -76,6 +76,7 @@ port = 7001
 - [x] More config (listening IP, port, timeouts)
 - [ ] RR load balancing
 - [x] Config file in other place (`$ZODIAC_CONFIG`)
+- [ ] Move to epoll
 - [ ] CI/CD
 - [ ] Docker image
 - [ ] Stress test
