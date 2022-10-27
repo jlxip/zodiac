@@ -39,6 +39,10 @@ struct Task {
 	size_t bufferSize = 0;
 	size_t ctr = 0; // Bytes written in buffer
 
+	// All bytes written in buffer in the past from backOut
+	// This is just to return an error if response was empty
+	size_t fullctr = 0;
+
 	// These get recycled for side
 	std::time_t timeout = 0, deadline = 0;
 };

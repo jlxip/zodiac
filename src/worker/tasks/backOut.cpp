@@ -31,6 +31,11 @@ bool Tasks::cbackOut(Task& task) {
 		}
 	} else {
 		task.ctr = r;
+		task.fullctr += r;
+
+		if(!task.fullctr)
+			task.conn.send("43 zodiac: empty response from backend\r\n");
+
 		return true;
 	}
 }
