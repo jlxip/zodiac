@@ -1,15 +1,13 @@
 # zodiac
 
 ## Introduction
-Zodiac is a low-footprint high-performance reverse proxy (and, very soon, load balancer) for [Gemini](https://gemini.circumlunar.space/), written in C++. Think of it like an nginx for Gemini.
+Zodiac is a low-footprint high-performance reverse proxy (and, very soon, load balancer) for [Gemini](https://gemini.circumlunar.space/), written in C++. Think of it like an nginx for Gemini, meant to connect to FastCGI-like local servers, or _backends_.
 
 This project:
-- Soothes the Gemini backend creation, by abstracting everything regarding TLS.
+- Soothes the Gemini backend creation, since they don't need to worry about TLS or timeouts.
 - Performs demultiplexing of requests via SNI.
 - Returns status code 43 (`PROXY ERROR`) in case the backend doesn't answer.
 - Can handle many simultaneous connections with very little resources.
-
-The backend receives `<URL><CR><LF><Client's IP><CR><LF>`. This way, the specification is not broken (the second line can be ignored), but there's transparency across the proxy.
 
 ## Configuration file
 An example configuration file is as follows:
@@ -63,6 +61,9 @@ port = 7001
   - If no default capsule is specified, one will be chosen at random for its TLS certificate, and zodiac will return status code 41 (`NOT FOUND`).
 - The `backend` field can be a domain name. In that case, it will be resolved once before accepting requests.
 - If you want capsules on different ports, you can run two instances of zodiac without issues. I'm not implementing it since it makes things messy.
+
+## FastCGI-like protocol
+The backend receives `<URL><CR><LF><Client's IP><CR><LF>`. This way, the proxy is transparent while the specification is not broken, since the second line can be ignored.
 
 ## Additional information
 - The [first version](https://github.com/jlxip/zodiac/tree/0.1.0) was written in 4 hours, one hour after [knowing Gemini exists](https://youtu.be/K-en4nEV5Xc).

@@ -20,8 +20,10 @@ bool Tasks::cbackOut(Task& task) {
 	if(r < 0) {
 		switch(errno) {
 		case EAGAIN:
-			if(std::time(nullptr) >= task.deadline)
+			if(std::time(nullptr) >= task.deadline) {
+				task.conn.send("43 zodiac: response from backend timed out\r\n");
 				task.type = Task::N_TASKS;
+			}
 			return false;
 		default:
 			task.type = Task::N_TASKS;
