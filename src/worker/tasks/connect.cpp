@@ -12,6 +12,17 @@ void Tasks::connect(Task& task) {
 		return;
 	}
 
+	// Does the request end in CRLF?
+	if(task.ctr < 2) {
+		task.conn.send("59 zodiac: no CRLF\r\n");
+		task.type = Task::N_TASKS;
+		return;
+	} else if(task.buffer[task.ctr-2] != '\r' || task.buffer[task.ctr-1] != '\n') {
+		task.conn.send("59 zodiac: no CRLF\r\n");
+		task.type = Task::N_TASKS;
+		return;
+	}
+
 	// Create socket to backend
 	task.backend = socket(AF_INET, SOCK_STREAM, 0);
 	if(task.backend < 0) {
