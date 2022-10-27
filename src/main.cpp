@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <worker/worker.hpp>
 #include <fcntl.h>
+#include <signal.h>
 
 const char* defaultConfigPath = "zodiac.conf";
 
@@ -26,6 +27,9 @@ int main() {
 
 	globalConfig = parseConfig(configPath);
 	globalServer = {0}; // Reinitialize globalServer now that there's config
+
+	// Ignore SIGPIPE, the standard practice in all TCP servers
+	signal(SIGPIPE, SIG_IGN);
 
 	// Prepare TLS contexts to be used in the server name callback
 	std::cout << "Setting up capsules..." << std::endl;

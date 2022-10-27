@@ -15,6 +15,9 @@ CXX := g++
 INCLUDES := -Isrc
 
 CXXFLAGS_BASE := -std=c++11 -O2
+ifdef DEBUG
+CXXFLAGS_BASE += -g
+endif
 CXXFLAGS_WARN := -Wall -Wextra -Werror
 CXXFLAGS_EXCLUDE := -fno-exceptions -fno-rtti
 CXXFLAGS := $(INCLUDES) $(CXXFLAGS_BASE) $(CXXFLAGS_WARN) $(CXXFLAGS_EXCLUDE)
