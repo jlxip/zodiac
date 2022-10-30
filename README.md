@@ -15,7 +15,7 @@ This project:
 ## Configuration file
 The configuration file defaults to `./zodiac.conf`, but a different one can be specified via the `ZODIAC_CONFIG` environment variable.
 
-An example config is given in the [example.conf](https://github.com/jlxip/bsgemini/blob/master/example.conf) file at the root of the repository.
+An example config is given in the [example.conf](https://github.com/jlxip/zodiac/blob/master/example.conf) file at the root of the repository.
 
 ## FastCGI-like protocol
 The backend receives `<URL><CR><LF><Client's IP><CR><LF>`. This way, the proxy is transparent while the specification is not broken, since the second line can be ignored.
