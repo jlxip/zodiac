@@ -4,7 +4,7 @@
 // Max request length is 1024 according to Gemini specification
 #define MAX_REQ_LENGTH 1024
 
-void Tasks::receive(Task& task) {
+bool Tasks::receive(Task* task) {
 	/*
 		TLS handshake has just finished. Now, we wait for the path.
 		Let's first get the server name for two reasons:
@@ -15,61 +15,53 @@ void Tasks::receive(Task& task) {
 	*/
 
 	// Get server name (and a pointer to CapsuleConfig if possible)
-	auto it = globalServer.names.find(task.conn.getSN());
+	auto it = globalServer.names.find(task->conn.getSN());
 	if(it == globalServer.names.end()) {
 		// Unknown. Is default explicitly set?
 		if(globalConfig.hasExplicitDefault) {
 			// Yep, no worries
-			task.capsule = &(globalConfig.capsules[globalConfig.def]);
+			task->capsule = &(globalConfig.capsules[globalConfig.def]);
 		} else {
 			// No; doom the connection
-			task.doomed = true;
+			task->doomed = true;
 		}
 	} else {
 		// Nice
-		task.capsule = &(globalConfig.capsules[(*it).second]);
+		task->capsule = &(globalConfig.capsules[(*it).second]);
 	}
 
 	// Set the frontend timeout
-	task.timeout = globalConfig.frontTimeout;
-	if(!task.doomed) {
+	task->timeout = globalConfig.frontTimeout;
+	if(!task->doomed) {
 		// If it's not doomed, then there's a capsule attached, so let's
 		//   set its timeout, in case there is one.
-		size_t specific = task.capsule->frontTimeout;
+		size_t specific = task->capsule->frontTimeout;
 		if(specific)
-			task.timeout = specific;
+			task->timeout = specific;
 	}
 
 	// Now we get the path at creceive()
-	task.deadline = 0;
+	task->frontback = FRONTEND;
+	return true;
 }
 
-bool Tasks::creceive(Task& task) {
-	if(!task.deadline)
-		task.deadline = std::time(nullptr) + task.timeout;
+int Tasks::creceive(Task* task) {
+	int r = task->conn.recv(task->buffer, task->ctr, MAX_REQ_LENGTH);
+	if(r == Tasks::RET_ERROR)
+		return r; // Something failed along the way
 
-	int r = task.conn.recv(task.buffer, task.ctr, MAX_REQ_LENGTH);
-	if(!r) {
-		// Nothing new
-		if(std::time(nullptr) >= task.deadline)
-			task.type = Task::N_TASKS; // Timeout!
-		return false;
-	} else if(r < 0) {
-		// Something failed along the way
-		task.type = Task::N_TASKS;
-		return false;
-	}
+	if(r <= 0)
+		return Tasks::RET_READ; // Nothing new
 
-	task.ctr += r;
-	char lastChar = task.buffer[task.ctr-1];
+	task->ctr += r;
+	char lastChar = task->buffer[task->ctr-1];
 	// Read until LF (assumed CR comes before, but it doesn't really matter)
 	if(lastChar == '\n')
-		return true; // All set!
-
+		return Tasks::RET_OK;
 	// Not ready yet
-	bool bad = std::time(nullptr) >= task.deadline; // Timeout
-	bad = bad || (task.ctr >= MAX_REQ_LENGTH); // or too big
-	if(bad)
-		task.type = Task::N_TASKS;
-	return false;
+
+	if(task->ctr >= MAX_REQ_LENGTH)
+		return Tasks::RET_ERROR; // Too big
+
+	return Tasks::RET_READ;
 }

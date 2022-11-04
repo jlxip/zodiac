@@ -4,29 +4,33 @@
 #include <worker/worker.hpp>
 
 /*
-	These are the steps (tasks) that form a full job
-	The ones that start with an extra 'c' are checks: they are executed
-	  repeatedly until they return true. This is great for non-blocking
-	  operations.
-	The ones that do not, are only executed once, so they're for the rest
-	  of the initialization which would not block in any scenario.
+	These are the steps (tasks) that form a full job (request processing)
+	Two types: CPU-intensive and IO-intensive.
+	CPU-intensive are performed once.
+	IO-intensive might be performed multiple times until all data is read
+	  or written.
 */
 
 namespace Tasks {
-	void establish(Task&); bool cestablish(Task&);
-	void receive(Task&); bool creceive(Task&);
-	void connect(Task&); bool cconnect(Task&);
-	void backIn(Task&); bool cbackIn(Task&);
-	void backOut(Task&); bool cbackOut(Task&);
-	void proxy(Task&); bool cproxy(Task&);
+	const int RET_OK = 0;
+	const int RET_READ = -1;
+	const int RET_WRITE = -2;
+	const int RET_ERROR = -3;
 
-	typedef void (*func)(Task&);
-	typedef bool (*check)(Task&);
+	bool establish(Task*); int cestablish(Task*);
+	bool receive(Task*); int creceive(Task*);
+	bool connect(Task*); int cconnect(Task*);
+	bool backIn(Task*); int cbackIn(Task*);
+	bool backOut(Task*); int cbackOut(Task*);
+	bool proxy(Task*); int cproxy(Task*);
 
-	const func funcs[Task::N_TASKS] = {establish, receive, connect,
-									   backIn, backOut, proxy};
-	const check checks[Task::N_TASKS] = {cestablish, creceive, cconnect,
-										 cbackIn, cbackOut, cproxy};
+	typedef bool (*cpuwork)(Task*);
+	typedef int (*iowork)(Task*);
+
+	const cpuwork cpuworks[Task::N_TASKS] = {establish, receive, connect,
+											 backIn, backOut, proxy};
+	const iowork ioworks[Task::N_TASKS] = {cestablish, creceive, cconnect,
+										   cbackIn, cbackOut, cproxy};
 };
 
 #endif

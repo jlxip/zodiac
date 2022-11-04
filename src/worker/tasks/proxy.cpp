@@ -1,29 +1,26 @@
 #include "tasks.hpp"
 #include <iostream>
 
-void Tasks::proxy(Task& task) {
-	// backOut received some bytes, allegedly. Was it empty?
-	if(!task.ctr) {
-		task.type = Task::N_TASKS;
-		return;
-	}
-
+bool Tasks::proxy(Task* task) {
+	// We don't touch task->timeout, it's set by backOut
 	// And now we send them to the client in cproxy
+	// TODO this is slightly wrong
+	task->frontback = FRONTEND;
+	return true;
 }
 
-bool Tasks::cproxy(Task& task) {
-	int r = task.conn.send(task.buffer, task.ctr);
+int Tasks::cproxy(Task* task) {
+	int r = task->conn.send(task->buffer, task->ctr);
 	if(!r) {
-		// Buffer full, waiting
-		return false;
+		// Buffer is full, waiting
+		return Tasks::RET_WRITE;
 	} else if(r < 0) {
 		// Failed :(
-		task.type = Task::N_TASKS;
-		return false;
+		return Tasks::RET_ERROR;
 	}
 
 	// Nice. Go back to backOut, since more bytes might be coming
-	task.type = Task::BACK_OUT;
-	task.waiting = false;
-	return false;
+	task->type = Task::BACK_OUT - 1;
+	task->type--; // This will get incremented
+	return Tasks::RET_OK;
 }

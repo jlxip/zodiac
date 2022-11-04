@@ -1,3 +1,0 @@
-[submodule "updatable_priority_queue"]
-	path = src/worker/scheduler/upq
-	url = https://github.com/Ten0/updatable_priority_queue

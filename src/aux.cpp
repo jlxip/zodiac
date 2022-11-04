@@ -1,4 +1,6 @@
 #include <common.hpp>
+#include <fcntl.h>
+#include <unistd.h>
 
 // Some auxiliary functions
 
@@ -32,4 +34,18 @@ std::vector<std::string> commaSplit(const char* str) {
 	if(aux.size())
 		ret.push_back(aux);
 	return ret;
+}
+
+bool setNonBlocking(int fd) {
+	int flags = fcntl(fd, F_GETFL);
+	if(flags < 0) {
+		close(fd);
+		return false;
+	}
+	if(fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+		close(fd);
+		return false;
+	}
+
+	return true;
 }

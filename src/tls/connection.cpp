@@ -3,6 +3,10 @@
 #include <sys/socket.h>
 #include <iostream>
 
+bool TLS::Connection::setNonBlocking() {
+	return ::setNonBlocking(client);
+}
+
 void TLS::Connection::createSSL() {
 	ssl = SSL_new(globalServer.defaultContext);
 	SSL_set_fd(ssl, client);
@@ -10,20 +14,22 @@ void TLS::Connection::createSSL() {
 	SSL_set_accept_state(ssl); // Not actually needed but good practice
 }
 
-bool TLS::Connection::doHandshake() {
+int TLS::Connection::doHandshake() {
 	if(SSL_is_init_finished(ssl))
 		return 0;
 
 	int r = SSL_accept(ssl);
 	if(r == -1) {
 		r = SSL_get_error(ssl, r);
-		if(r != SSL_ERROR_WANT_READ && r != SSL_ERROR_WANT_WRITE) {
-			// Not a requirement, so it actually failed
-			return false;
-		}
+		if(r == SSL_ERROR_WANT_READ)
+			return -1;
+		else if(r == SSL_ERROR_WANT_WRITE)
+			return -2;
+		else
+			return -3;
 	}
 
-	return true;
+	return 0;
 }
 
 bool TLS::Connection::checkHandshake() {
@@ -34,14 +40,16 @@ bool TLS::Connection::checkHandshake() {
 
 int TLS::Connection::recv(char* buffer, size_t offset, size_t max) {
 	if(!ssl)
-		return -1;
+		return -3;
 
 	int r = SSL_read(ssl, buffer+offset, max - offset);
 	if(r <= 0) {
 		r = SSL_get_error(ssl, r);
-		if(r != SSL_ERROR_WANT_READ && r != SSL_ERROR_WANT_WRITE)
-			return -1; // Error
-		return 0; // Nothing new
+		if(r == SSL_ERROR_WANT_READ)
+			return -1;
+		else if(r == SSL_ERROR_WANT_WRITE)
+			return -2;
+		return -3;
 	}
 
 	return r; // Got something

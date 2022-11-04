@@ -24,10 +24,12 @@ namespace TLS {
 		Connection(int client, sockaddr_in addr)
 			: client(client), addr(addr)
 		{}
+		inline int getSocket() const { return client; }
 
 		// Before handshake
+		bool setNonBlocking();
 		void createSSL();
-		bool doHandshake();
+		int doHandshake();
 		bool checkHandshake();
 
 		// After handshake

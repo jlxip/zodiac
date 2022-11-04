@@ -9,8 +9,11 @@
 extern Config globalConfig;
 extern TLS::Server globalServer;
 
+extern int epoll_fd;
+
 // aux.cpp
 size_t nproc();
 std::vector<std::string> commaSplit(const char* str);
+bool setNonBlocking(int fd);
 
 #endif

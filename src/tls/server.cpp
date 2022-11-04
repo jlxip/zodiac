@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <openssl/err.h>
 
+#define MAX_CONNECTIONS 16
+
 TLS::Server::Server(int) {
 	auto port = globalConfig.listenPort;
 
@@ -28,7 +30,12 @@ TLS::Server::Server(int) {
 		exit(EXIT_FAILURE);
 	}
 
-	if(listen(sock, 1) < 0) {
+	if(!setNonBlocking(sock)) {
+		std::cerr << "Could not set non-blocking" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+
+	if(listen(sock, MAX_CONNECTIONS) < 0) {
 		std::cerr << "Unable to listen on port " << port << std::endl;
 		exit(EXIT_FAILURE);
 	}

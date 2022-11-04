@@ -35,10 +35,7 @@ The backend receives `<URL><CR><LF><Client's IP><CR><LF>`. This way, the proxy i
 - [x] More config (listening IP, port, timeouts)
 - [ ] RR load balancing
 - [x] Config file in other place (`$ZODIAC_CONFIG`)
-- [ ] Move to epoll
+- [x] Move to epoll
 - [ ] CI/CD
 - [ ] Docker image
 - [ ] Stress test
-
-## Special thanks
-- To @Ten0 for [their updatable priority queue implementation](https://github.com/Ten0/updatable_priority_queue), included as a submodule at `src/upq`, which makes the worker thread scheduler much simpler.
