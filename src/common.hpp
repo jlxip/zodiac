@@ -14,6 +14,7 @@ struct Data {
 	TLS::Connection conn;
 	bool doomed = false;
 	CapsuleConfig* capsule = nullptr;
+	sockaddr_in saddr;
 	int frontend = 0;
 	int backend = 0;
 	bool noTimeout = true;

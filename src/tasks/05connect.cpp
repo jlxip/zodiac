@@ -5,7 +5,7 @@ int task05connect(SSockets_ctx* ctx) {
 	Data* data = (Data*)(ctx->data);
 
 	// Connect now
-	auto r = connect(data->backend, (struct sockaddr*)&(data->capsule->saddr),
+	auto r = connect(data->backend, (struct sockaddr*)&(data->saddr),
 					 sizeof(sockaddr));
 
 	if(r == 0) {

@@ -40,6 +40,18 @@ int task04prepareConnect(SSockets_ctx* ctx) {
 	if(!ctx->timeout)
 		ctx->timeout = globalConfig.backTimeout;
 
+	// Now we pick one of the backends, round-robin
+	// It's worth checking if there's more than 1 so that mutex is not acquired
+	if(data->capsule->addrs.size() > 1) {
+		data->capsule->addrLock.lock();
+		size_t which = data->capsule->addr++;
+		data->capsule->addr %= data->capsule->addrs.size();
+		data->capsule->addrLock.unlock();
+		data->saddr = data->capsule->addrs[which];
+	} else {
+		data->saddr = data->capsule->addrs[0];
+	}
+
 	ctx->fd = data->backend;
 	ctx->state = STATE_CONNECT;
 	return SSockets_RET_OK;

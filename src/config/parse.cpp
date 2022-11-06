@@ -34,8 +34,8 @@ Config parseConfig(const char* path) {
 		s.name = iniparser_getstring(dict, (x+":name").c_str(), "");
 		s.cert = iniparser_getstring(dict, (x+":cert").c_str(), "cert.pem");
 		s.key = iniparser_getstring(dict, (x+":key").c_str(), "key.pem");
-		s.backend = iniparser_getstring(dict, (x+":backend").c_str(), "localhost");
-		s.port = iniparser_getint(dict, (x+":port").c_str(), 0);
+		const char* rawbackends = iniparser_getstring(dict, (x+":backend").c_str(), "localhost");
+		const char* rawports = iniparser_getstring(dict, (x+":port").c_str(), 0);
 		s.frontTimeout = iniparser_getint(dict, (x+":frontTimeout").c_str(), 0);
 		s.backTimeout = iniparser_getint(dict, (x+":backTimeout").c_str(), 0);
 
@@ -72,30 +72,41 @@ Config parseConfig(const char* path) {
 			exit(EXIT_FAILURE);
 		}
 
-		if(!s.port) {
+		if(!rawports) {
 			std::cerr
 				<< "No \"port\" key for capsule \"" << x << "\"."
 				<< std::endl;
 			exit(EXIT_FAILURE);
 		}
 
-		// Resolve backend field
-		hostent* he = gethostbyname(s.backend.c_str());
-		if(!he) {
-			std::cerr << "Could not resolve: " << s.backend << std::endl;
+		auto backends = commaSplit(rawbackends);
+		auto ports = commaSplit(rawports);
+		if(backends.size() != ports.size()) {
+			std::cerr << "There are " << backends.size() << " backends but "
+					  << ports.size() << " ports." << std::endl;
 			exit(EXIT_FAILURE);
 		}
 
-		// Set values for easy access later
-		sockaddr_in saddr;
-		saddr.sin_family = AF_INET;
-		saddr.sin_port = htons(s.port);
-		saddr.sin_addr = *((in_addr*)he->h_addr);
-		memset(saddr.sin_zero, 0, 8);
-		s.saddr = saddr;
+		s.addrs.reserve(backends.size());
+		for(size_t i=0; i<backends.size(); ++i) {
+			// Resolve backend field
+			hostent* he = gethostbyname(backends[i].c_str());
+			if(!he) {
+				std::cerr << "Could not resolve: " << backends[i] << std::endl;
+				exit(EXIT_FAILURE);
+			}
+
+			// Set values for easy access later
+			sockaddr_in saddr;
+			saddr.sin_family = AF_INET;
+			saddr.sin_port = htons(atoi(ports[i].c_str()));
+			saddr.sin_addr = *((in_addr*)he->h_addr);
+			memset(saddr.sin_zero, 0, 8);
+			s.addrs.push_back(saddr);
+		}
 
 		// Add to global config now
-		ret.capsules[x] = s;
+		ret.capsules[x] = std::move(s);
 	}
 
 	if(!ret.def.size()) {

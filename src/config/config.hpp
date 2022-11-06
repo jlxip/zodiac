@@ -4,16 +4,28 @@
 #include <string>
 #include <arpa/inet.h>
 #include <unordered_map>
+#include <vector>
+#include <mutex>
 
 struct CapsuleConfig {
 	std::string name;
 	std::string cert, key;
 
-	std::string backend;
-	uint16_t port;
-	sockaddr_in saddr;
+	std::vector<sockaddr_in> addrs;
+	std::mutex addrLock;
+	size_t addr = 0;
 
 	size_t frontTimeout, backTimeout;
+
+	void operator=(CapsuleConfig&& other) {
+		name = std::move(other.name);
+		cert = std::move(other.cert);
+		key = std::move(other.key);
+		addrs = std::move(other.addrs);
+		addr = std::move(other.addr);
+		frontTimeout = std::move(frontTimeout);
+		backTimeout = std::move(backTimeout);
+	}
 };
 
 struct Config {

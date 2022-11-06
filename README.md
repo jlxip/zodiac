@@ -1,7 +1,7 @@
 # zodiac
 
 ## Introduction
-Zodiac is a low-footprint high-performance reverse proxy (and, very soon, load balancer) for [Gemini](https://gemini.circumlunar.space/), written in C++. Think of it like an nginx for Gemini, meant to connect to FastCGI-like local servers, or _backends_.
+Zodiac is a low-footprint high-performance reverse proxy and load balancer for [Gemini](https://gemini.circumlunar.space/), written in C++. Think of it like an nginx for Gemini, meant to connect to FastCGI-like local servers, or _backends_.
 
 This project:
 - Soothes the Gemini backend creation, since they don't need to worry about:
@@ -42,7 +42,7 @@ docker run -d -p 1965:1965 --name myserver --restart=unless-stopped -v zodiac_co
 - [x] Multiple capsules
 - [x] Worker threads
 - [x] More config (listening IP, port, timeouts)
-- [ ] RR load balancing
+- [x] RR load balancing
 - [x] Config file in other place (`$ZODIAC_CONFIG`)
 - [x] Move to epoll
 - [x] CI/CD
