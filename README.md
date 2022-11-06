@@ -23,7 +23,7 @@ The backend receives `<URL><CR><LF><Client's IP><CR><LF>`. This way, the proxy i
 ## Additional information
 - The [first version](https://github.com/jlxip/zodiac/tree/0.1.0) was written in 4 hours, one hour after [knowing Gemini exists](https://youtu.be/K-en4nEV5Xc).
 - Zodiac follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
-- Dependencies: openssl and [iniparser](https://github.com/ndevilla/iniparser).
+- Dependencies: openssl, [iniparser](https://github.com/ndevilla/iniparser), and [ssockets](https://github.com/jlxip/ssockets).
 
 ## Backends for zodiac
 - [bsgemini](https://github.com/jlxip/bsgemini), by me, for static servers, written in C++.
@@ -38,4 +38,3 @@ The backend receives `<URL><CR><LF><Client's IP><CR><LF>`. This way, the proxy i
 - [x] Move to epoll
 - [ ] CI/CD
 - [ ] Docker image
-- [ ] Stress test

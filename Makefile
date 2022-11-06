@@ -2,7 +2,7 @@
 PROJNAME := zodiac
 RESULT := zodiac
 
-LIBS := ssl crypto iniparser
+LIBS := ssl crypto iniparser ssockets
 EXCLUDE := ./worker/scheduler/upq/*
 
 

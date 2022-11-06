@@ -8,7 +8,7 @@
 
 /*
 	This is sort of a simple TLS wrapper, but very specific for the
-	  purposes of this project. Non-blocking.
+	  purposes of this project.
 */
 
 namespace TLS {
@@ -27,7 +27,6 @@ namespace TLS {
 		inline int getSocket() const { return client; }
 
 		// Before handshake
-		bool setNonBlocking();
 		void createSSL();
 		int doHandshake();
 		bool checkHandshake();
@@ -49,7 +48,7 @@ namespace TLS {
 			return send(&msg[0], msg.size());
 		}
 
-		void cl();
+		void close();
 	};
 
 	// One of these per capsule
@@ -59,14 +58,9 @@ namespace TLS {
 
 	// Singleton
 	struct Server {
-		int sock;
 		SSL_CTX* defaultContext = nullptr;
 		std::unordered_map<std::string, SSL_CTX*> ctxs;
 		std::unordered_map<std::string, std::string> names;
-
-		Server() : sock(-1) {}
-		Server(int);
-		void cl();
 	};
 };
 

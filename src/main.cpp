@@ -1,25 +1,17 @@
 #include <iostream>
 #include <common.hpp>
 #include <unistd.h>
-#include <pthread.h>
-#include <worker/worker.hpp>
-#include <signal.h>
-#include <sys/epoll.h>
+#include "tasks/tasks.hpp"
+#include <sys/mman.h>
 
 const char* defaultConfigPath = "zodiac.conf";
 
 Config globalConfig;
 TLS::Server globalServer;
 
-// A gentle introduction to non-blocking sockets:
-// https://www.scottklement.com/rpg/socktut/nonblocking.html
-
-// The advices from the following post are followed:
-// https://idea.popcount.org/2017-02-20-epoll-is-fundamentally-broken-12/
-
-const size_t listenEvents = EPOLLIN | EPOLLEXCLUSIVE;
-
-int epoll_fd;
+void hangup(SSockets_ctx* ctx);
+void timeout(SSockets_ctx* ctx);
+void destroy(SSockets_ctx* ctx);
 
 int main() {
 	std::cout << "Zodiac starting. Parsing configuration..." << std::endl;
@@ -32,16 +24,6 @@ int main() {
 	}
 
 	globalConfig = parseConfig(configPath);
-	globalServer = {0}; // Reinitialize globalServer now that there's config
-
-	// Ignore SIGPIPE, the standard practice in all TCP servers
-	signal(SIGPIPE, SIG_IGN);
-
-	// Build epoll fd
-	if((epoll_fd = epoll_create1(0)) < 0) {
-		std::cerr << "Could not create epoll fd" << std::endl;
-		exit(1);
-	}
 
 	// Prepare TLS contexts to be used in the server name callback
 	std::cout << "Setting up capsules..." << std::endl;
@@ -54,32 +36,61 @@ int main() {
 	}
 	globalServer.defaultContext = globalServer.ctxs[globalConfig.def];
 
-	// Spawn worker threads
-	size_t workers = globalConfig.workers;
-	if(!workers)
-		globalConfig.workers = workers = nproc(); // Overwriting config
-	std::cout << "Spawning " << workers << " worker threads..." << std::endl;
-	for(size_t i=1; i<workers; ++i) {
-		pthread_t thread;
-		pthread_create(&thread, NULL, worker, (void*)i);
-	}
-
 	std::cout
 		<< "Listening on "
 		<< globalConfig.listenIP << ':'
 		<< globalConfig.listenPort << std::endl;
 
-	// Add listening socket to epoll
-	Event* evt = new Event;
-	evt->type = Event::LISTEN;
-	evt->u.listenfd = globalServer.sock;
-	epoll_event ev;
-	ev.events = listenEvents;
-	ev.data.ptr = evt;
-	if(epoll_ctl(epoll_fd, EPOLL_CTL_ADD, globalServer.sock, &ev) == -1) {
-		std::cerr << "Could not add to epoll" << std::endl;
-		exit(1);
+	SSockets_addState(task00init);
+	SSockets_addState(task01handshake);
+	SSockets_addState(task02identify);
+	SSockets_addState(task03receive);
+	SSockets_addState(task04prepareConnect);
+	SSockets_addState(task05connect);
+	SSockets_addState(task06prepareBackin);
+	SSockets_addState(task07backin);
+	SSockets_addState(task08prepareBackout);
+	SSockets_addState(task09backout);
+	SSockets_addState(task10proxy);
+
+	SSockets_setHangupCallback(hangup);
+	SSockets_setTimeoutCallback(timeout);
+	SSockets_setDestroyCallback(destroy);
+
+	SSockets_run(globalConfig.listenIP.c_str(),
+				 globalConfig.listenPort,
+				 globalConfig.workers);
+}
+
+void hangup(SSockets_ctx* ctx) {
+	Data* data = (Data*)(ctx->data);
+	if(ctx->state == STATE_CONNECT)
+		data->conn.send("43 zodiac: could not connect to backend\r\n");
+	else if(ctx->state > STATE_CONNECT)
+		data->conn.send("43 zodiac: connection closed\r\n");
+}
+
+void timeout(SSockets_ctx* ctx) {
+	Data* data = (Data*)(ctx->data);
+	if(ctx->state == STATE_CONNECT)
+		data->conn.send("43 zodiac: connection timed out\r\n");
+	else if(ctx->state == STATE_BACKOUT)
+		data->conn.send("43 zodiac: response from backend timed out\r\n");
+}
+
+#include <sys/epoll.h>
+extern int SSockets_epollfd;
+void destroy(SSockets_ctx* ctx) {
+	Data* data = (Data*)(ctx->data);
+
+	epoll_ctl(SSockets_epollfd, EPOLL_CTL_DEL, data->frontend, nullptr);
+	data->conn.close();
+
+	if(data->backend) {
+		epoll_ctl(SSockets_epollfd, EPOLL_CTL_DEL, data->backend, nullptr);
+		close(data->backend);
 	}
 
-	worker(nullptr);
+	munmap(data->buffer, data->bufferSize);
+	delete data;
 }
