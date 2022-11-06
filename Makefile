@@ -12,7 +12,7 @@ SRCPATH := src
 OBJPATH := obj
 
 CXX := g++
-INCLUDES := -Isrc
+INCLUDES := -Isrc -I/usr/include/iniparser/
 
 CXXFLAGS_BASE := -std=c++11 -O2
 ifdef DEBUG

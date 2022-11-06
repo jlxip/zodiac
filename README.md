@@ -20,6 +20,15 @@ An example config is given in the [example.conf](https://github.com/jlxip/zodiac
 ## FastCGI-like protocol
 The backend receives `<URL><CR><LF><Client's IP><CR><LF>`. This way, the proxy is transparent while the specification is not broken, since the second line can be ignored.
 
+## Docker
+A Dockerfile is available at the root of this repository. It is automatically built and pushed to the Docker Hub on each release, with the name [jlxip/zodiac](https://hub.docker.com/r/jlxip/zodiac). To use it, run something along the lines of:
+
+```bash
+docker volume create zodiac_config
+sudo cp yourconfig.conf /var/lib/docker/volumes/zodiac_config/_data/zodiac.conf
+docker run -d -p 1965:1965 --name myserver --restart=unless-stopped -v zodiac_config:/config jlxip/zodiac:latest
+```
+
 ## Additional information
 - The [first version](https://github.com/jlxip/zodiac/tree/0.1.0) was written in 4 hours, one hour after [knowing Gemini exists](https://youtu.be/K-en4nEV5Xc).
 - Zodiac follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
@@ -36,5 +45,5 @@ The backend receives `<URL><CR><LF><Client's IP><CR><LF>`. This way, the proxy i
 - [ ] RR load balancing
 - [x] Config file in other place (`$ZODIAC_CONFIG`)
 - [x] Move to epoll
-- [ ] CI/CD
-- [ ] Docker image
+- [x] CI/CD
+- [x] Docker image

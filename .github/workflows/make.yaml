@@ -1,0 +1,41 @@
+name: Make
+on:
+  create:
+    tags:
+      - '*'
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Get SSockets
+        run: |
+          sudo wget https://github.com/jlxip/ssockets/releases/latest/download/libssockets.so -O /usr/lib/libssockets.so
+          sudo wget https://github.com/jlxip/ssockets/releases/latest/download/ssockets.h -O /usr/include/ssockets.h
+      - name: Dependencies
+        run: |
+          sudo apt update
+          sudo apt install libiniparser-dev libiniparser1
+      - name: Compile
+        run: make -C $GITHUB_WORKSPACE
+      - name: Publish
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            zodiac
+            example.conf
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: true
+          tags: |
+            jlxip/zodiac:latest
+            jlxip/zodiac:${{ github.ref_name }}
