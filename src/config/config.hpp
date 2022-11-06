@@ -32,7 +32,7 @@ struct Config {
 	std::string listenIP;
 	uint16_t listenPort;
 	size_t frontTimeout, backTimeout, hsTimeout;
-	size_t workers, buffers;
+	size_t workers;
 
 	std::unordered_map<std::string, CapsuleConfig> capsules;
 	bool hasExplicitDefault = false;

@@ -15,7 +15,6 @@ Config parseConfig(const char* path) {
 	ret.backTimeout = iniparser_getint(dict, "zodiac:backTimeout", 5);
 	ret.hsTimeout = iniparser_getint(dict, "zodiac:hsTimeout", 5);
 	ret.workers = iniparser_getint(dict, "zodiac:workers", 0);
-	ret.buffers = iniparser_getint(dict, "zodiac:buffers", 256);
 
 	// Get enabled capsules
 	const char* rawenabled = iniparser_getstring(dict, "zodiac:enabled", "");
