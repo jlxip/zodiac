@@ -1,14 +1,25 @@
-FROM alpine:3.16
+FROM jlxip/ssockets:0.1.3-docker2 as build
 
 ENV ZODIAC_CONFIG=/config/zodiac.conf
 
-RUN ["wget", "https://github.com/jlxip/ssockets/releases/latest/download/libssockets.so", "-O", "/usr/lib/libssockets.so"]
+# Make dependencies
+RUN apk add --no-cache git make g++ openssl-dev iniparser-dev
+# Execution dependencies
+RUN apk add --no-cache openssl iniparser libstdc++
 
-RUN ["mkdir", "/app"]
-RUN ["chown", "nobody:nobody", "/app"]
-COPY --chown=nobody:nobody ./zodiac /app/zodiac
+RUN git clone https://github.com/jlxip/zodiac ~/zodiac
+RUN sed -i 's/\/bin\/bash/\/bin\/sh/g' ~/zodiac/Makefile
+RUN make -C ~/zodiac
+RUN mkdir /app && mv ~/zodiac/zodiac /app/
+RUN chmod -R o+rx /app
 
-RUN ["apk", "add", "--no-cache", "gcompat", "libstdc++", "openssl", "iniparser"]
+# Cleanup
+RUN rm -rf ~/zodiac
+RUN apk del git make g++ openssl-dev iniparser-dev
+
+# Flatten time
+FROM scratch
+COPY --from=build / /
 
 USER nobody
 CMD ["/app/zodiac"]
