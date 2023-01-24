@@ -3,6 +3,13 @@ CXXFLAGS := -std=c++11 -Isrc -I/usr/include/iniparser/ -fno-exceptions -fno-rtti
 LIBS := ssl crypto iniparser ssockets
 LINK := g++
 
+.PHONY: aux
+aux: all
+
+.PHONY: run
+run: all
+	./$(RESULTS)
+
 # ---------------------
 
 # tbs 1.0.0-RC1
