@@ -1,28 +1,25 @@
 PROJNAME := zodiac
 CXXFLAGS := -std=c++11 -Isrc -I/usr/include/iniparser/ -fno-exceptions -fno-rtti
 LIBS := ssl crypto iniparser ssockets
-LINK := g++
-
-.PHONY: aux
-aux: all
-
-.PHONY: run
-run: all
-	./$(RESULTS)
+RUN = ./$(RESULTLINK)
 
 # ---------------------
 
-# tbs 1.0.0-RC1
+# tbs 1.0.0-RC2
 
 # 1. INTRODUCTION
 # This is tbs, the trivial build system, a Makefile for C/C++/asm projects.
 # This is public domain; feel free to copy/paste, modify, and share me.
-# tbs 1.0.0-RC1 by jlxip, January 24th 2023
+# tbs 1.0.0-RC2 by jlxip, January 25th 2023
 
 # 2. DOCUMENTATION
 # tbs is configured via a series of variables at the top of this file.
 # If this is your first time using tbs, just remove everything above the line
 # at the top of this huge comment, and set the values as you please.
+# Variables that you want to unset (those that have a default value), must
+# be set to a space. Example: LTO := " "
+# Variables that you want to set (those that do not have a default value), may
+# be set to any value. Example: ISLIB := yes
 # As all options are just variables, they can be overriden at runtime via
 # environment ones. For instance:
 # LOUD=1 make
@@ -43,15 +40,14 @@ run: all
 # want this behavior, set $(LOUD).
 
 # 2.2. FILES
-# If your project is not a library ($(ISLIB) is not set), then it will be
+# If your project results in a binary ($(ISLIB) is not set), then it will be
 # compiled to a file named $(PROJNAME); override this behavior by setting
-# $(RESULTS), for instance:
-# RESULTS := $(PROJNAME).exe
-# If $(MAKESHARED) is set, $(RESULTS) will be "$(RESULTSHARED)", which
-# defaults to "$(PROJNAME).so"
-# If $(MAKESTATIC) is set, $(RESULTS) will be "$(RESULTSTATIC)", which
-# defaults to "$(PROJNAME).a"
-# If both are set, $(RESULTS) will be "$(RESULTSHARED) $(RESULTSTATIC)"
+# $(RESULTLINK), for instance:
+# RESULTLINK := $(PROJNAME).exe
+# If $(MAKESHARED) is set, $(RESULTLINK) will default to "lib$(PROJNAME).so"
+# If $(MAKESTATIC) is set, $(RESULTAR) will be used instead, and it defaults
+# to "lib$(PROJNAME).a"
+# $(RESULTS) is set for convenience to "$(RESULTLINK) $(RESULTAR)".
 # Please keep all your source files inside a directory. The default value is
 # "src". Override by setting $(SRCPATH).
 # Each file in src, if criteria is met, will be compiled to an object under
@@ -77,37 +73,50 @@ run: all
 # 2.4. FLAGS
 # $(CC) and $(CXX) receive the flags given in $(CFLAGS) and $(CXXFLAGS)
 # respectively. These variables are built from others and can be changed:
-# - $(WALL) = "-Wall -Wextra -Werror"
-# - $(OL) = "-O2"
+# - $(WALL), defaults to "-Wall -Wextra -Werror"
+# - $(OL), defaults to "-O2"
+# - $(LTO), defaults to "-flto"
 # The special variable $(ISLIB), if set, will add the flag "-fPIC".
 # $(ASM) receives the flags given in $(ASMFLAGS).
 
 # 2.5. LINKER
 # The linker is defined in $(LINK); $(CC) is used by default, since it can
-# be used trivially to link C, C++, and assembly objects. In some specific
-# situations, such as freestanding environments, setting it to "ld" may
-# be desirable.
+# be used trivially to link C and assembly objects. If $(CXX) is used at least
+# once, then it turns into the default linker, since $(CC) can't link
+# to libstdc++. In some specific situations, such as freestanding environments,
+# setting it to "ld" may be desirable.
 # Following the ideas expressed in the previous section, its flags are set
 # in $(LINKFLAGS), and they can be configured indirectly via variables:
-# - $(RELRO) = "-z relro -z now"
+# - $(RELRO), defaults to "-Wl,-z,relro,-z,now"
+# - $(LTO), defaults to "-flto"
 # The (empty by default) variable $(LIBS) will append "-l" to the beginning
 # of each entry, so:
-# $(LIBS) := "m fuse"
-# will turn into:
-# $(LINKFLAGS) := "... -lm -lfuse ..."
+# LIBS := m fuse
+# will turn into $(LINKFLAGS) having "-lm -lfuse" somewhere in the middle.
 # The special variable $(ISLIB) will add the flag "-shared"
 
-# 2.6. TARGETS
+# 2.6. MODES
+# Your project is by default in "release" mode. This means that the following
+# features will be enabled unless otherwise specified:
+# - Link Time Optimization (LTO) for $(CC) and $(CXX), by the variable $(LTO)
+#   which, as specified previously, defaults to "-flto".
+# - Stripping for all results, enabled by the abscence of $(NO_STRIP), and
+#   only executed if found on the system.
+# You can compile your project in "debug" mode, which will disable all of the
+# above. This is done via the $(DEBUG) variable. However, consider NOT setting
+# it at the top of the file, and only via an environment variable.
+
+# 2.7. TARGETS
 # tbs will define several targets to be used in the "make" order:
 # - all: the default, compiles $(RESULTS)
 # - install: runs "all" and then installs the project.
-#   "Installing" means running "install" (0755) from $(RESULTS) to $(INS). If
-#   the result is an executable, $(INS) defaults to "/usr/bin".
+#   "Installing" means running "install" (0755) from $(RESULTS) to $(INS).
+#   If the result is an executable, $(INS) defaults to "/usr/bin".
 #   If it's a library, it defaults to "/usr/lib".
 # - uninstall: removes the files created by "install"
-# - clean: removes "$(RESULTS)" and "$(OBJPATH)"
+# - clean: removes $(RESULTS) and $(OBJPATH)
 
-# 2.7. EXTENSIONS
+# 2.8. EXTENSIONS
 # All the targets defined above can be extended via custom ones.
 # If $(USE_PREALL) is defined, the target "preall", which is expected to have
 # been defined by the programmer at the top, will be invoked BEFORE linking.
@@ -123,9 +132,24 @@ run: all
 # .PHONY: aux
 # aux: all
 # This way, "make" will still be equivalent to "make all"
+# If you want a "run" target, you are free to define it like any other; however,
+# as these targets are usually one-liners, you can fill the $(RUN) variable,
+# in which case a "run" target with your order will be set up.
 
 # 3. CHANGELOG
 # Versions follow SemVer 2.0.0
+# - 1.0.0-RC2 (2023-01-25):
+#   - New debug/release modes (Section 2.6), with strip!
+#   - Simpler handling of results via $(RESULTLINK) and $(RESULTAR) instead of
+#     $(RESULTSHARED) and $(RESULTSTATIC)
+#   - If $(CXX) is used, it turns into the linker by default
+#   - If $(ISLIB), $(RESULTLINK) and $(RESULTAR) now prepend "lib" by default
+#   - Support for LTO, and enabled by default in release mode
+#   - $(RUN) for one-liner "run" targets
+#   - Using $(WALL) and $(OL) for linking too
+#   - Discovered "?=" which makes for shorter code
+#   - Fixed typos, rewrote confusing statements, and expanded on understanding
+#     assumptions
 # - 1.0.0-RC1 (2023-01-24): first version
 
 
@@ -134,6 +158,14 @@ run: all
 
 # Avoid issues in non-GNU systems
 SHELL := /bin/sh
+
+# System discovery: is there a "type" shell built-in?
+HAVETYPE := $(shell type echo &> /dev/null; echo $$?)
+ifeq ($(HAVETYPE),0)
+    HAVETYPE := yes
+else
+    HAVETYPE := ""
+endif
 
 # Loud mode?
 ifndef LOUD
@@ -154,70 +186,44 @@ ifdef ISLIB
     endif
 endif
 
-# Default values for RESULTSHARED and RESULTSTATIC, if needed
+# Default values for RESULTLINK and RESULTAR
 ifdef ISLIB
     ifdef MAKESHARED
-        ifndef RESULTSHARED
-            RESULTSHARED := $(PROJNAME).so
-        endif
+        RESULTLINK ?= lib$(PROJNAME).so
     endif
     ifdef MAKESTATIC
-        ifndef RESULTSTATIC
-            RESULTSTATIC := $(PROJNAME).a
-        endif
+        RESULTAR ?= lib$(PROJNAME).a
     endif
+else
+    RESULTLINK ?= $(PROJNAME)
 endif
 
-# Default value for RESULTS
-ifndef RESULTS
-    ifdef ISLIB
-        ifdef MAKESHARED
-            RESULTS += $(RESULTSHARED)
-        endif
-        ifdef MAKESTATIC
-            RESULTS += $(RESULTSTATIC)
-        endif
-    else
-        RESULTS := $(PROJNAME)
-    endif
-endif
+# This is convenient
+RESULTS := $(RESULTLINK) $(RESULTAR)
 
 # Default values for SRCPATH and OBJPATH
-ifndef SRCPATH
-    SRCPATH := src
-endif
-ifndef OBJPATH
-    OBJPATH := obj
-endif
+SRCPATH ?= src
+OBJPATH ?= obj
 
 # Default extensions
-ifndef CEX
-    CEX := .c
-endif
-ifndef CXXEX
-    CXXEX := .cpp .cc
-endif
-ifndef ASMEX
-    ASMEX := .asm .s
-endif
+CEX ?= .c
+CXXEX ?= .cpp .cc
+ASMEX ?= .asm .s
 
 # CC and CXX come defined in GNU Makefile
 # ASM does not (AS actually does, but defaults to "as" which is uncool)
-ifndef ASM
-    ASM := nasm
-endif
+ASM ?= nasm
 
-# Default values for WALL and OL
-ifndef WALL
-    WALL := -Wall -Wextra -Werror
-endif
-ifndef OL
-    OL := -O2
+# Default values for CC and CXX flags
+WALL ?= -Wall -Wextra -Werror
+OL ?= -O2
+ifndef DEBUG
+    LTO ?= -flto
 endif
 
 # Set up CFLAGS and CXXFLAGS
-CFLAGS += $(WALL) $(OL)
-CXXFLAGS += $(WALL) $(OL)
+CFLAGS += $(WALL) $(OL) $(LTO)
+CXXFLAGS += $(WALL) $(OL) $(LTO)
 ifdef ISLIB
     CFLAGS += -fPIC
     CXXFLAGS += -fPIC
@@ -225,14 +231,13 @@ endif
 
 # Default linker
 ifndef LINK
+    LINK_IS_DEFAULT := yup
     LINK := $(CC)
 endif
 
-# RELRO
-ifndef RELRO
-    RELRO := -Wl,-z,relro,-z,now
-endif
-LINKFLAGS += $(RELRO)
+# LINKFLAGS
+RELRO ?= -Wl,-z,relro,-z,now
+LINKFLAGS += $(RELRO) $(WALL) $(OL) $(LTO)
 
 # Construct LIBS if given
 ifdef LIBS
@@ -245,13 +250,27 @@ ifdef ISLIB
     LINKFLAGS += -shared
 endif
 
-# Default values for INS
-ifndef INS
-    ifndef ISLIB
-        INS := /usr/bin
-    else
-        INS := /usr/lib
+# Stripping
+ifndef DEBUG
+    ifndef NO_STRIP
+        ifdef HAVETYPE
+            STRIP := $(shell type -P strip &> /dev/null; echo $$?)
+            ifeq ($(STRIP),0)
+                # Alright, all good; paranoia is over
+                # Mind the semicolon and the absence of ":="
+                STRIP = $(shell type -P strip) $(1);
+            else
+                STRIP := ""
+            endif
+        endif
     endif
+endif
+
+# Default values for INS
+ifndef ISLIB
+    INS ?= /usr/bin
+else
+    INS ?= /usr/lib
 endif
 
 
@@ -300,6 +319,15 @@ CXXOBJ := $(CXXSRC:%=$(OBJPATH)/%.o)
 ASMOBJ := $(ASMSRC:%=$(ASMPATH)/%.o)
 # Example: CXXOBJ := obj/main.c.o obj/utils/solve.c.o
 
+# Any CXX objects?
+ifdef CXXOBJ
+    # Yes, is linker set by default?
+    ifdef LINK_IS_DEFAULT
+        # Yes, change linker to CXX
+        LINK := $(CXX)
+    endif
+endif
+
 # And these are all the objects
 OBJS := $(COBJ) $(CXXOBJ) $(ASMOBJ)
 
@@ -337,28 +365,18 @@ POSTMACRO = if [ ! -z "$(USE_POST$(1))" ]; then $(MAKE) post$(2); fi
 all: $(RESULTS) | $(USE_PREALL)
 	$(call POSTMACRO,ALL,all)
 
-ifndef ISLIB
-$(RESULTS): $(OBJS)
+$(RESULTLINK): $(OBJS)
 	if [ -z "$(SKIP_ALL)" ]; then \
 	    echo "[$(PROJNAME)] Linking..."; \
 	    $(LINK) $(OBJS) $(LINKFLAGS) -o $@; \
+	    $(call STRIP,$@) \
 	fi
-else
-ifdef RESULTSHARED
-$(RESULTSHARED): $(OBJS)
+$(RESULTAR): $(OBJS)
 	if [ -z "$(SKIP_ALL)" ]; then \
-	    echo "[$(PROJNAME)] Linking..."; \
-	    $(LINK) $(OBJS) $(LINKFLAGS) -o $@; \
+	    echo "[$(PROJNAME)] Archiving..."; \
+	    $(AR) -rcs $@ $(OBJS); \
+	    $(call STRIP,$@) \
 	fi
-endif
-ifdef RESULTSTATIC
-$(RESULTSTATIC): $(OBJS)
-	if [ -z "$(SKIP_ALL)" ]; then \
-	    echo "[$(PROJNAME)] Archiving..." \
-	    $(AR) -rcs $@ $(OBJS) \
-	fi
-endif
-endif
 
 # Include the ".d" files (generated below)
 -include $(COBJ:%.o=%.d)
@@ -412,3 +430,10 @@ clean: | $(USE_PRECLEAN)
 	if [ -z "$(SKIP_CLEAN)" ]; then \
 	    rm -rf $(RESULTS) $(OBJPATH)/; fi
 	$(call POSTMACRO,CLEAN,clean)
+
+# Extra: run
+ifdef RUN
+.PHONY: run
+run: all
+	$(RUN)
+endif
