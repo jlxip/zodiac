@@ -7,7 +7,7 @@ int task10proxy(SSockets_ctx* ctx) {
 	ctx->fd = data->frontend;
 
 	int r = data->conn.send(data->buffer, data->ctr);
-	if(!r)
+	if(!r || (r < 0 && errno == EAGAIN))
 		return SSockets_RET_WRITE; // Buffer is full, waiting
 	else if(r < 0)
 		return SSockets_RET_ERROR; // Failed :(
