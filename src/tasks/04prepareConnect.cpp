@@ -15,11 +15,14 @@ int task04prepareConnect(SSockets_ctx* ctx) {
 
 	// Does the request end in CRLF?
 	if(data->ctr < 2) {
-		data->conn.send("59 zodiac: no CRLF\r\n");
+		data->conn.send("59 zodiac: too short!\r\n");
 		return SSockets_RET_ERROR;
-	} else if(data->buffer[data->ctr-2] != '\r' || data->buffer[data->ctr-1] != '\n') {
-		data->conn.send("59 zodiac: no CRLF\r\n");
-		return SSockets_RET_ERROR;
+	} else if(data->buffer[data->ctr-2] != '\r') {
+		// Fix LF to CRLF
+		// This is safe since ctr <= MAX_REQ_LENGTH <<< PAGE_SIZE
+		data->buffer[data->ctr-1] = '\r';
+		data->buffer[data->ctr] = '\n';
+		data->buffer[data->ctr+1] = '\0';
 	}
 
 	// Create socket to backend
