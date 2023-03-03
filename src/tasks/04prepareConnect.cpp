@@ -23,6 +23,7 @@ int task04prepareConnect(SSockets_ctx* ctx) {
 		data->buffer[data->ctr-1] = '\r';
 		data->buffer[data->ctr] = '\n';
 		data->buffer[data->ctr+1] = '\0';
+		data->ctr++;
 	}
 
 	// Create socket to backend
